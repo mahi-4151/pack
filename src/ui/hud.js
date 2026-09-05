@@ -43,6 +43,13 @@ export class Hud {
       bonusKills: $('[data-bonus-kills]'),
       bonusSecrets: $('[data-bonus-secrets]'),
       retry: $('[data-retry]'),
+      walletCoins: $('[data-wallet-coins]'),
+      walletPearls: $('[data-wallet-pearls]'),
+      reward: $('[data-reward]'),
+      rewardCoins: $('[data-reward-coins]'),
+      rewardPearls: $('[data-reward-pearls]'),
+      walletTotalCoins: $('[data-wallet-total-coins]'),
+      walletTotalPearls: $('[data-wallet-total-pearls]'),
       store: $('[data-store]'),
       bars: {
         player: { fill: $('[data-hp-fill="player"]'), lag: $('[data-hp-lag="player"]'), text: $('[data-hp-text="player"]'), bar: $('.bar--player'), portrait: $('.portrait--player') },
@@ -92,7 +99,7 @@ export class Hud {
     this.el.hud.hidden = false;
   }
 
-  showResult({ win, coins, gems, lives, points = 0, bonus = null }) {
+  showResult({ win, coins, gems, lives, points = 0, bonus = null, reward = null, wallet = null }) {
     const screen = this.el.result;
     screen.hidden = false;
     screen.classList.toggle('is-win', win);
@@ -113,6 +120,13 @@ export class Hud {
       this.el.bonusKills.textContent = `+${bonus.kills} PTS`;
       this.el.bonusSecrets.textContent = `${bonus.secrets}/3`;
     }
+    this.el.reward.hidden = !win || !reward;
+    if (reward && wallet) {
+      this.el.rewardCoins.textContent = `+${reward.coins}`;
+      this.el.rewardPearls.textContent = `+${reward.pearls}`;
+      this.#countUp(this.el.walletTotalCoins, wallet.coins);
+      this.#countUp(this.el.walletTotalPearls, wallet.pearls);
+    }
     this.el.again.hidden = !win;
     this.el.retry.hidden = win;
     this.el.store.hidden = win;
@@ -123,6 +137,11 @@ export class Hud {
     if (this.el.points.textContent === text) return;
     this.el.points.textContent = text;
     this.#bump(this.el.points.parentElement);
+  }
+
+  setWallet({ coins, pearls }) {
+    this.el.walletCoins.textContent = coins.toLocaleString('en-IN');
+    this.el.walletPearls.textContent = pearls.toLocaleString('en-IN');
   }
 
   setPaused(paused) {

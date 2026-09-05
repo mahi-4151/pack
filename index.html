@@ -55,6 +55,10 @@
               <span class="vs-badge__vs">VS</span>
             </div>
             <div class="points" aria-label="Points">Points: <b data-points>0</b></div>
+            <div class="wallet" aria-label="Hero wallet">
+              <span class="wallet__item wallet__item--coin"><i></i><b data-wallet-coins>0</b></span>
+              <span class="wallet__item wallet__item--pearl"><i></i><b data-wallet-pearls>0</b></span>
+            </div>
             <div class="loot" aria-label="Treasure collected">
               <span class="loot__item loot__item--coin">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 6.6v10.8M9.4 9.2h4.1a1.9 1.9 0 0 1 0 3.8h-3.4a1.9 1.9 0 0 0 0 3.8h4.5" /></svg>
@@ -218,6 +222,12 @@
               </div>
             </dl>
             <div class="tally__row tally__row--points"><dt>Total Points</dt><dd data-result-points>0</dd></div>
+            <div class="reward" data-reward hidden>
+              <p class="reward__title">Hero Credits</p>
+              <span class="wallet__item wallet__item--coin"><i></i><b data-reward-coins>+500</b> Coins</span>
+              <span class="wallet__item wallet__item--pearl"><i></i><b data-reward-pearls>+100</b> Pearls</span>
+              <p class="reward__total">Wallet: <b data-wallet-total-coins>0</b> coins · <b data-wallet-total-pearls>0</b> pearls</p>
+            </div>
             <dl class="bonus" data-bonus hidden>
               <div><dt>Time Bonus</dt><dd data-bonus-time>+0 PTS</dd></div>
               <div><dt>Enemies Defeated</dt><dd data-bonus-kills>+0 PTS</dd></div>

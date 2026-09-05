@@ -56,11 +56,39 @@ export class Game {
     this.paused = false;
     this.matchStartedAt = 0;
     this.kills = 0;
+    this.wallet = Game.loadWallet();
 
     window.addEventListener('resize', () => this.resize());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.clock.getDelta();
     });
+  }
+
+  /* ---------------------------------------------------------- hero wallet */
+
+  static WALLET_KEY = 'pandya.wallet';
+
+  static loadWallet() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(Game.WALLET_KEY) ?? 'null');
+      if (saved && Number.isFinite(saved.coins) && Number.isFinite(saved.pearls)) return saved;
+    } catch {
+      /* corrupted / unavailable storage → fresh wallet */
+    }
+    return { coins: 0, pearls: 0 };
+  }
+
+  /** Credits the hero for a level won and persists the wallet. */
+  rewardHero() {
+    this.wallet.coins += COMBAT.reward.coins;
+    this.wallet.pearls += COMBAT.reward.pearls;
+    try {
+      localStorage.setItem(Game.WALLET_KEY, JSON.stringify(this.wallet));
+    } catch {
+      /* private mode etc. — wallet still lives for this session */
+    }
+    this.hud.setWallet(this.wallet);
+    return { ...COMBAT.reward };
   }
 
   /* ------------------------------------------------------------------ boot */
@@ -128,6 +156,7 @@ export class Game {
     this.hud.setWeapon(this.player.weapon);
     this.hud.setLives(this.lives);
     this.hud.setCooldown('special', 1);
+    this.hud.setWallet(this.wallet);
     this.resize();
 
     // Render one frame behind the veil so the first visible frame is warm.
@@ -521,9 +550,13 @@ export class Game {
         secrets: Math.min(3, this.loot.gems),
       };
       this.addPoints(bonus.time + bonus.kills + this.lives * COMBAT.points.lifeBonus);
+      const reward = this.rewardHero();
       this.hud.announce('Level Clear!');
       this.sfx.win();
-      setTimeout(() => this.hud.showResult({ win: true, coins: this.loot.coins, gems: this.loot.gems, lives: this.lives, points: this.points, bonus }), 1900);
+      setTimeout(
+        () => this.hud.showResult({ win: true, coins: this.loot.coins, gems: this.loot.gems, lives: this.lives, points: this.points, bonus, reward, wallet: this.wallet }),
+        1900,
+      );
       return;
     }
 

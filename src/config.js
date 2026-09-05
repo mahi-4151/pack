@@ -27,6 +27,8 @@ export const COMBAT = {
   lives: 5,
   dodge: { cooldown: 1.6, distance: 1.7, invulnerable: 0.55 },
   special: { cooldown: 9, damage: 30, range: 3.2, charge: 3 }, // charge = hits needed to unlock
+  /** Hero credits awarded per level won; persisted in the browser wallet. */
+  reward: { coins: 500, pearls: 100 },
   points: { hit: 25, crit: 60, parry: 40, dodge: 15, special: 120, kill: 1000, lifeBonus: 300, timeBonus: 500 },
   moveSpeed: 2.0,
   backSpeed: 1.5,

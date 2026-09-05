@@ -521,6 +521,7 @@ export class Game {
 
     // Keep the camera centred between the duellists for a subtle dolly.
     if (this.player && this.enemy) {
+      this.arena.trackFighters(this.player.x, this.enemy.x, elapsed);
       const midpoint = (this.player.x + this.enemy.x) * 0.5;
       this.arena.cameraTarget.x += (midpoint * 0.55 - this.arena.cameraTarget.x) * Math.min(1, dt * 2.2);
     }

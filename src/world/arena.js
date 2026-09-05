@@ -204,6 +204,20 @@ export class Arena {
     plain.receiveShadow = true;
     this.scene.add(plain);
 
+    // Team markers: emerald for the player's side, blood red for the king's.
+    this.markers = {};
+    for (const [side, color] of [['player', 0x37d16a], ['enemy', 0xec4433]]) {
+      const marker = new THREE.Mesh(
+        new THREE.RingGeometry(0.42, 0.62, 48),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+      );
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.y = 0.012;
+      marker.renderOrder = 2;
+      this.markers[side] = marker;
+      this.scene.add(marker);
+    }
+
     // Soft contact shadow under the ring keeps the fighters grounded.
     const pool = new THREE.Mesh(
       new THREE.CircleGeometry(9.2, 48),
@@ -304,6 +318,23 @@ export class Arena {
       banners.add(pole, cloth);
     }
     this.scene.add(banners);
+  }
+
+  /** Keeps the team markers and rim lights glued to the duellists. */
+  trackFighters(playerX, enemyX, elapsed = 0) {
+    const pulse = 1 + Math.sin(elapsed * 2.4) * 0.04;
+    if (this.markers.player) {
+      this.markers.player.position.x = playerX;
+      this.markers.player.scale.setScalar(pulse);
+    }
+    if (this.markers.enemy) {
+      this.markers.enemy.position.x = enemyX;
+      this.markers.enemy.scale.setScalar(2 - pulse);
+    }
+    this.rimLights.green.position.x = playerX - 2.2;
+    this.rimLights.red.position.x = enemyX + 2.2;
+    this.sun.target.position.set((playerX + enemyX) * 0.5, 1, 0);
+    this.sun.target.updateMatrixWorld();
   }
 
   addShake(amount) {

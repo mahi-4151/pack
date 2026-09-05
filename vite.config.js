@@ -6,7 +6,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     cors: true,
-    // The sandbox preview proxies the dev server over https://<port>-<id>.e2b.app
+    // Arena previews are proxied over https://<port>-<id>.e2b.app.
     allowedHosts: true,
     hmr: { clientPort: 443, protocol: 'wss' },
   },
@@ -18,10 +18,5 @@ export default defineConfig({
   build: {
     target: 'es2020',
     assetsInlineLimit: 2048,
-    rollupOptions: {
-      output: {
-        manualChunks: { three: ['three'] },
-      },
-    },
   },
 });

@@ -1,16 +1,7 @@
-import { Game } from './game/game.js';
+import { DungeonGame } from './dungeon-game.js';
 
-const canvas = document.querySelector('#scene');
-const game = new Game(canvas);
+const root = document.querySelector('#game');
+const game = new DungeonGame(root);
 
-game.boot().catch((error) => {
-  console.error(error);
-  const text = document.querySelector('[data-load-text]');
-  if (text) {
-    text.textContent = 'The battlefield could not be summoned. Please reload.';
-    text.style.color = '#ff9c8b';
-  }
-});
-
-// Handy for tuning from the console during development.
-if (import.meta.env?.DEV) window.game = game;
+// Useful for visual QA and for demonstrating the distinct result cards.
+if (import.meta.env?.DEV) window.dungeonGame = game;

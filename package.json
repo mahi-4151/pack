@@ -1,9 +1,9 @@
 {
-  "name": "pandya-empire-of-warriors",
+  "name": "runebound-sunken-crypt",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Pandya: Empire of Warriors - a browser-based 3D duel game built with Three.js",
+  "description": "Runebound: a cinematic dark fantasy dungeon encounter for the browser",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

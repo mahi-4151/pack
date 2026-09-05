@@ -33,6 +33,24 @@ export class Hud {
       weaponLabel: $('[data-weapon-label]'),
       weaponStrip: $('[data-weapon-strip]'),
       enemyIndicator: $('[data-enemy-indicator]'),
+      points: $('[data-points]'),
+      pause: $('[data-pause]'),
+      paused: $('[data-paused]'),
+      resume: $('[data-resume]'),
+      resultPoints: $('[data-result-points]'),
+      bonus: $('[data-bonus]'),
+      bonusTime: $('[data-bonus-time]'),
+      bonusKills: $('[data-bonus-kills]'),
+      bonusSecrets: $('[data-bonus-secrets]'),
+      retry: $('[data-retry]'),
+      walletCoins: $('[data-wallet-coins]'),
+      walletPearls: $('[data-wallet-pearls]'),
+      reward: $('[data-reward]'),
+      rewardCoins: $('[data-reward-coins]'),
+      rewardPearls: $('[data-reward-pearls]'),
+      walletTotalCoins: $('[data-wallet-total-coins]'),
+      walletTotalPearls: $('[data-wallet-total-pearls]'),
+      store: $('[data-store]'),
       bars: {
         player: { fill: $('[data-hp-fill="player"]'), lag: $('[data-hp-lag="player"]'), text: $('[data-hp-text="player"]'), bar: $('.bar--player'), portrait: $('.portrait--player') },
         enemy: { fill: $('[data-hp-fill="enemy"]'), lag: $('[data-hp-lag="enemy"]'), text: $('[data-hp-text="enemy"]'), bar: $('.bar--enemy'), portrait: $('.portrait--enemy') },
@@ -81,18 +99,53 @@ export class Hud {
     this.el.hud.hidden = false;
   }
 
-  showResult({ win, coins, gems, lives }) {
+  showResult({ win, coins, gems, lives, points = 0, bonus = null, reward = null, wallet = null }) {
     const screen = this.el.result;
     screen.hidden = false;
     screen.classList.toggle('is-win', win);
     screen.classList.remove('is-fading');
-    this.el.resultTitle.textContent = win ? 'You Win' : 'You Lose';
+    this.el.resultTitle.textContent = win ? 'Level Clear!' : 'Game Over';
     this.el.resultSub.textContent = win
-      ? 'The northern warlord kneels. Madurai holds its throne.'
+      ? 'The Spectral Warrior is banished. Madurai holds its throne.'
       : 'The throne of Madurai falls silent. Rise and fight again.';
     this.#countUp(this.el.resultCoins, coins);
     this.#countUp(this.el.resultGems, gems);
     this.el.resultLives.textContent = String(lives);
+    this.#countUp(this.el.resultPoints, points);
+
+    // Level Clear shows the bonus breakdown + NEXT LEVEL; Game Over shows TRY AGAIN + STORE.
+    this.el.bonus.hidden = !win || !bonus;
+    if (bonus) {
+      this.el.bonusTime.textContent = `+${bonus.time} PTS`;
+      this.el.bonusKills.textContent = `+${bonus.kills} PTS`;
+      this.el.bonusSecrets.textContent = `${bonus.secrets}/3`;
+    }
+    this.el.reward.hidden = !win || !reward;
+    if (reward && wallet) {
+      this.el.rewardCoins.textContent = `+${reward.coins}`;
+      this.el.rewardPearls.textContent = `+${reward.pearls}`;
+      this.#countUp(this.el.walletTotalCoins, wallet.coins);
+      this.#countUp(this.el.walletTotalPearls, wallet.pearls);
+    }
+    this.el.again.hidden = !win;
+    this.el.retry.hidden = win;
+    this.el.store.hidden = win;
+  }
+
+  setPoints(points) {
+    const text = points.toLocaleString('en-IN');
+    if (this.el.points.textContent === text) return;
+    this.el.points.textContent = text;
+    this.#bump(this.el.points.parentElement);
+  }
+
+  setWallet({ coins, pearls }) {
+    this.el.walletCoins.textContent = coins.toLocaleString('en-IN');
+    this.el.walletPearls.textContent = pearls.toLocaleString('en-IN');
+  }
+
+  setPaused(paused) {
+    this.el.paused.hidden = !paused;
   }
 
   hideResult() {

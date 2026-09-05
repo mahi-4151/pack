@@ -38,7 +38,7 @@ const missing = Object.entries(hud.el)
   .filter(([, value]) => value === null)
   .map(([key]) => key);
 check('every HUD node resolves', missing.length === 0, missing.join(', '));
-check('all five action buttons bound', ['attack', 'defend', 'weapon', 'heal', 'bow'].every((key) => hud.el.buttons[key]));
+check('all five action buttons bound', ['attack', 'defend', 'weapon', 'heal', 'bow', 'dodge', 'special'].every((key) => hud.el.buttons[key]));
 check('cooldown rings bound', ['attack', 'heal', 'bow'].every((key) => hud.el.cooldowns[key]));
 check('weapon strip lists the rack', Object.keys(hud.chips).length === WEAPONS.length, Object.keys(hud.chips).join(', '));
 
@@ -57,7 +57,8 @@ try {
   hud.damage('enemy', 12, 100);
   hud.floater('-13', { x: 100, y: 200 }, 'crit');
   hud.showHud();
-  hud.showResult({ win: true, coins: 42, gems: 3, lives: 2 });
+  hud.setWallet({ coins: 500, pearls: 100 });
+  hud.showResult({ win: true, coins: 42, gems: 3, lives: 2, reward: { coins: 500, pearls: 100 }, wallet: { coins: 1000, pearls: 200 } });
 } catch (exception) {
   error = exception;
 }
@@ -69,7 +70,8 @@ check('lives dim when spent', document.querySelectorAll('.life.is-active').lengt
 check('loot counters update', hud.el.coins.textContent === '42' && hud.el.gems.textContent === '3');
 check('weapon chip highlights', hud.chips.vel.classList.contains('is-on'));
 check('cooldown variable set', hud.el.cooldowns.bow.style.getPropertyValue('--cd') === '0.5');
-check('result screen reveals', hud.el.result.hidden === false && hud.el.resultTitle.textContent === 'You Win');
+check('hero wallet shows credits', hud.el.walletCoins.textContent === '500' && hud.el.walletPearls.textContent === '100' && hud.el.reward.hidden === false);
+check('result screen reveals', hud.el.result.hidden === false && hud.el.resultTitle.textContent === 'Level Clear!');
 check('floating text mounts', document.querySelectorAll('.floater').length === 1);
 
 console.log('\nControls');

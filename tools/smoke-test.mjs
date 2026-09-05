@@ -177,6 +177,17 @@ for (const [id, file, startX] of [
   fighter.root.updateMatrixWorld(true);
   const head = fighter.chestPoint(new THREE.Vector3());
   check('chest anchor is sane', finite(head) && head.y > 0.7 && head.y < 2.2, `y=${head.y.toFixed(2)}`);
+
+// Villain-pack clips borrowed for the roll / special (both rigs).
+check('dodge + special clips present', fighter.has('dodge') && fighter.has('special'), [...fighter.clips.keys()].join(','));
+{
+  const x0 = fighter.x;
+  const d = fighter.dodge({ distance: 1.5, direction: -1, invulnerable: 0.5 });
+  for (let i = 0; i < 60; i++) fighter.update(1 / 30);
+  check('dodge rolls the body away', d > 0 && Math.abs(fighter.x - x0) > 1.2, `moved ${(fighter.x - x0).toFixed(2)} m over ${d.toFixed(2)} s`);
+  check('dodge returns to idle', fighter.state === 'idle', fighter.state);
+  fighter.revive();
+}
 }
 
 console.log(failures === 0 ? '\n✔ all character checks passed\n' : `\n✘ ${failures} check(s) failed\n`);

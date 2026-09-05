@@ -48,14 +48,47 @@ export class Game {
     this.loot = { coins: 0, gems: 0 };
     this.lives = COMBAT.lives;
     this.round = 1;
-    this.cooldowns = { attack: 0, heal: 0, bow: 0, weapon: 0 };
+    this.cooldowns = { attack: 0, heal: 0, bow: 0, weapon: 0, dodge: 0, special: 0 };
     this.healCharges = COMBAT.heal.charges;
     this.quickDrawFrom = null;
+    this.points = 0;
+    this.specialCharge = 0;
+    this.paused = false;
+    this.matchStartedAt = 0;
+    this.kills = 0;
+    this.wallet = Game.loadWallet();
 
     window.addEventListener('resize', () => this.resize());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.clock.getDelta();
     });
+  }
+
+  /* ---------------------------------------------------------- hero wallet */
+
+  static WALLET_KEY = 'pandya.wallet';
+
+  static loadWallet() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(Game.WALLET_KEY) ?? 'null');
+      if (saved && Number.isFinite(saved.coins) && Number.isFinite(saved.pearls)) return saved;
+    } catch {
+      /* corrupted / unavailable storage → fresh wallet */
+    }
+    return { coins: 0, pearls: 0 };
+  }
+
+  /** Credits the hero for a level won and persists the wallet. */
+  rewardHero() {
+    this.wallet.coins += COMBAT.reward.coins;
+    this.wallet.pearls += COMBAT.reward.pearls;
+    try {
+      localStorage.setItem(Game.WALLET_KEY, JSON.stringify(this.wallet));
+    } catch {
+      /* private mode etc. — wallet still lives for this session */
+    }
+    this.hud.setWallet(this.wallet);
+    return { ...COMBAT.reward };
   }
 
   /* ------------------------------------------------------------------ boot */
@@ -98,6 +131,10 @@ export class Game {
         move: (direction) => this.enemy.setMove(direction),
         attack: () => this.enemyAttack(),
         block: (on) => (on ? this.enemy.startBlock() : this.enemy.stopBlock()),
+        dodge: () => {
+          const ok = this.enemy.dodge({ distance: 1.4, direction: -1, invulnerable: 0.45, clampX: (x) => THREE.MathUtils.clamp(x, ARENA.bounds.min, ARENA.bounds.max) });
+          if (ok) this.effects.dust(new THREE.Vector3(this.enemy.x, 0.02, 0), 14);
+        },
         rage: () => this.enemyRage(),
       },
     });
@@ -118,6 +155,8 @@ export class Game {
     this.hud.setProgress(1, 'Ready');
     this.hud.setWeapon(this.player.weapon);
     this.hud.setLives(this.lives);
+    this.hud.setCooldown('special', 1);
+    this.hud.setWallet(this.wallet);
     this.resize();
 
     // Render one frame behind the veil so the first visible frame is warm.
@@ -131,6 +170,10 @@ export class Game {
 
     this.hud.el.play.addEventListener('click', () => this.startMatch());
     this.hud.el.again.addEventListener('click', () => this.restart());
+    this.hud.el.retry.addEventListener('click', () => this.restart());
+    this.hud.el.store.addEventListener('click', () => this.hud.announce('Store opens soon'));
+    this.hud.el.pause.addEventListener('click', () => this.togglePause());
+    this.hud.el.resume.addEventListener('click', () => this.togglePause(false));
   }
 
   resize() {
@@ -149,6 +192,8 @@ export class Game {
     this.hud.showHud();
     this.hud.setRound(this.round);
     this.hud.setLoot(this.loot);
+    this.hud.setPoints(this.points);
+    this.matchStartedAt = performance.now();
     this.state = 'interlude';
     this.hud.announce('Round ' + this.round);
     setTimeout(() => {
@@ -165,7 +210,11 @@ export class Game {
     this.round = 1;
     this.loot = { coins: 0, gems: 0 };
     this.healCharges = COMBAT.heal.charges;
-    this.cooldowns = { attack: 0, heal: 0, bow: 0, weapon: 0 };
+    this.cooldowns = { attack: 0, heal: 0, bow: 0, weapon: 0, dodge: 0, special: 0 };
+    this.points = 0;
+    this.specialCharge = 0;
+    this.kills = 0;
+    this.hud.setCooldown('special', 1);
     this.player.revive();
     this.enemy.revive();
     this.player.setWeaponById('sword');
@@ -183,8 +232,11 @@ export class Game {
   /* -------------------------------------------------------- player actions */
 
   playerAction(name) {
+    if (name === 'pause') return this.togglePause();
     if (this.state !== 'fighting' || this.player.dead) return;
     if (name === 'attack') this.playerAttack();
+    else if (name === 'dodge') this.playerDodge();
+    else if (name === 'special') this.playerSpecial();
     else if (name === 'weapon') this.cycleWeapon();
     else if (name === 'heal') this.playerHeal();
     else if (name === 'bow') this.playerBow();
@@ -246,6 +298,63 @@ export class Game {
         this.hud.setWeapon(this.player.weapon);
       });
     }
+  }
+
+  /** Evasive roll away from the enemy (villain pack "slide attack" clip). */
+  playerDodge() {
+    if (this.cooldowns.dodge > 0 || this.player.busy || this.player.blocking) return;
+    const duration = this.player.dodge({
+      distance: COMBAT.dodge.distance,
+      direction: -1,
+      invulnerable: COMBAT.dodge.invulnerable,
+      clampX: (x) => THREE.MathUtils.clamp(x, ARENA.bounds.min, ARENA.bounds.max),
+    });
+    if (!duration) return;
+    this.cooldowns.dodge = COMBAT.dodge.cooldown;
+    this.dodgeCooldownMax = COMBAT.dodge.cooldown;
+    this.sfx.swap();
+    this.effects.dust(new THREE.Vector3(this.player.x, 0.02, 0), 18);
+    this.player.after(duration * 0.35, () => this.effects.dust(new THREE.Vector3(this.player.x, 0.02, 0), 12));
+  }
+
+  /** Charged jump attack (villain pack "jump attack" clip). Unlocks after a few landed hits. */
+  playerSpecial() {
+    if (this.cooldowns.special > 0 || this.player.busy || this.player.blocking) return;
+    if (this.specialCharge < COMBAT.special.charge) {
+      this.hud.announce(`Special charging ${this.specialCharge}/${COMBAT.special.charge}`, { danger: true });
+      return;
+    }
+    const weapon = { ...this.player.weapon, clip: 'special', damage: COMBAT.special.damage, range: COMBAT.special.range, speed: 1, impactAt: 0.55 };
+    const duration = this.player.attack(weapon, {
+      onImpact: () => {
+        this.arena.addShake(0.6);
+        this.effects.burst(new THREE.Vector3(this.player.x + this.player.facing * 1.2, 0.3, 0), { count: 50, color: '#ffd86b', speed: 5, gravity: -2, life: 0.8 });
+        this.resolveMelee(this.player, this.enemy, weapon);
+        this.addPoints(COMBAT.points.special);
+      },
+    });
+    if (!duration) return;
+    this.specialCharge = 0;
+    this.cooldowns.special = COMBAT.special.cooldown;
+    this.specialCooldownMax = COMBAT.special.cooldown;
+    this.sfx.swing();
+    this.brain.onPlayerAttack();
+    this.hud.announce('Special!');
+    this.effects.burst(this.player.chestPoint(new THREE.Vector3()), { count: 30, color: '#ffe27a', speed: 3, life: 0.5 });
+  }
+
+  togglePause(force) {
+    const next = force ?? !this.paused;
+    if (next && this.state !== 'fighting' && this.state !== 'interlude') return;
+    this.paused = next;
+    this.hud.setPaused(next);
+    this.controls.setEnabled(!next && this.state === 'fighting');
+    if (next) this.player.setMove(0);
+  }
+
+  addPoints(amount) {
+    this.points += amount;
+    this.hud.setPoints(this.points);
   }
 
   playerHeal() {
@@ -340,6 +449,11 @@ export class Game {
 
   applyDamage(attacker, defender, baseDamage, { ranged = false } = {}) {
     if (defender.dead) return;
+    if (defender.invulnerable) {
+      this.floater(defender, 'DODGED', 'block');
+      if (defender === this.player) this.addPoints(COMBAT.points.dodge);
+      return;
+    }
 
     const now = performance.now() / 1000;
     let damage = baseDamage;
@@ -372,7 +486,10 @@ export class Game {
       this.sfx.parry();
       this.floater(defender, perfect ? 'PARRY!' : `-${damage}`, 'block');
       this.arena.addShake(perfect ? 0.28 : 0.16);
-      if (perfect && defender === this.player) this.addLoot({ gems: COMBAT.gemsPerPerfectBlock });
+      if (perfect && defender === this.player) {
+        this.addLoot({ gems: COMBAT.gemsPerPerfectBlock });
+        this.addPoints(COMBAT.points.parry);
+      }
     } else {
       this.effects.impact(impactPoint, { color: crit ? '#ffe27a' : '#ffb36b', crit });
       this.sfx.hit(crit);
@@ -385,6 +502,12 @@ export class Game {
 
     if (attacker === this.player) {
       this.addLoot({ coins: randomInt(COMBAT.coinsPerHit) + (crit ? 4 : 0), gems: crit ? COMBAT.gemsPerCrit : 0 });
+      this.addPoints(crit ? COMBAT.points.crit : COMBAT.points.hit);
+      if (!blocked && this.specialCharge < COMBAT.special.charge) {
+        this.specialCharge += 1;
+        this.hud.setCooldown('special', 1 - this.specialCharge / COMBAT.special.charge);
+        if (this.specialCharge === COMBAT.special.charge) this.hud.announce('Special ready');
+      }
     }
 
     if (defender.hp <= 0) this.onDefeat(defender);
@@ -419,9 +542,21 @@ export class Game {
       this.controls.setEnabled(false);
       this.player.setMove(0);
       this.addLoot({ coins: COMBAT.coinsPerKill, gems: COMBAT.gemsPerKill });
-      this.hud.announce('Victory!');
+      this.kills += 1;
+      const seconds = (performance.now() - this.matchStartedAt) / 1000;
+      const bonus = {
+        time: Math.max(0, Math.round(COMBAT.points.timeBonus - seconds * 4)),
+        kills: COMBAT.points.kill,
+        secrets: Math.min(3, this.loot.gems),
+      };
+      this.addPoints(bonus.time + bonus.kills + this.lives * COMBAT.points.lifeBonus);
+      const reward = this.rewardHero();
+      this.hud.announce('Level Clear!');
       this.sfx.win();
-      setTimeout(() => this.hud.showResult({ win: true, coins: this.loot.coins, gems: this.loot.gems, lives: this.lives }), 1900);
+      setTimeout(
+        () => this.hud.showResult({ win: true, coins: this.loot.coins, gems: this.loot.gems, lives: this.lives, points: this.points, bonus, reward, wallet: this.wallet }),
+        1900,
+      );
       return;
     }
 
@@ -434,9 +569,9 @@ export class Game {
     if (this.lives <= 0) {
       this.state = 'over';
       this.brain.enabled = false;
-      this.hud.announce('You Lose', { danger: true });
+      this.hud.announce('Game Over', { danger: true });
       this.sfx.lose();
-      setTimeout(() => this.hud.showResult({ win: false, coins: this.loot.coins, gems: this.loot.gems, lives: 0 }), 1900);
+      setTimeout(() => this.hud.showResult({ win: false, coins: this.loot.coins, gems: this.loot.gems, lives: 0, points: this.points }), 1900);
       return;
     }
 
@@ -500,12 +635,19 @@ export class Game {
     this.hud.setCooldown('attack', this.attackCooldownMax ? this.cooldowns.attack / this.attackCooldownMax : 0);
     this.hud.setCooldown('heal', this.healCooldownMax ? this.cooldowns.heal / this.healCooldownMax : 0);
     this.hud.setCooldown('bow', this.bowCooldownMax ? this.cooldowns.bow / this.bowCooldownMax : 0);
+    this.hud.setCooldown('dodge', this.dodgeCooldownMax ? this.cooldowns.dodge / this.dodgeCooldownMax : 0);
+    if (this.cooldowns.special > 0) this.hud.setCooldown('special', this.cooldowns.special / this.specialCooldownMax);
   }
 
   frame() {
     if (!this.running) return;
     const dt = Math.min(0.05, this.clock.getDelta());
     const elapsed = this.clock.elapsedTime;
+
+    if (this.paused) {
+      this.renderer.render(this.arena.scene, this.arena.camera);
+      return;
+    }
 
     if (this.state === 'fighting') {
       this.brain.update(dt);

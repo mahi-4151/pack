@@ -48,6 +48,11 @@ export class EnemyBrain {
     const distance = Math.abs(this.self.x - this.target.x);
     if (distance > this.traits.range + 1.1) return;
     if (Math.random() > this.traits.blockChance) return;
+    // Sometimes roll out of the way instead of parrying (villain pack slide clip).
+    if (this.actions.dodge && Math.random() < 0.35) {
+      this.actions.dodge();
+      return;
+    }
     this.blockFor = rand(0.5, 0.95);
     this.actions.block(true);
   }

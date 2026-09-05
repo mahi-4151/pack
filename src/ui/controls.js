@@ -127,8 +127,13 @@ export class Controls {
     };
 
     window.addEventListener('keydown', (event) => {
-      if (event.repeat || !this.enabled) return;
+      if (event.repeat) return;
       const code = event.code;
+      if (code === 'KeyP' || code === 'Escape') {
+        this.onAction('pause');
+        return;
+      }
+      if (!this.enabled) return;
       if (moveKeys[code]) {
         pressed.add(code);
         evaluateMove();
@@ -146,6 +151,10 @@ export class Controls {
         this.onAction('heal');
       } else if (code === 'KeyB') {
         this.onAction('bow');
+      } else if (code === 'KeyQ') {
+        this.onAction('dodge');
+      } else if (code === 'KeyE') {
+        this.onAction('special');
       }
     });
 

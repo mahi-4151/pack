@@ -38,7 +38,7 @@ const missing = Object.entries(hud.el)
   .filter(([, value]) => value === null)
   .map(([key]) => key);
 check('every HUD node resolves', missing.length === 0, missing.join(', '));
-check('all five action buttons bound', ['attack', 'defend', 'weapon', 'heal', 'bow'].every((key) => hud.el.buttons[key]));
+check('all five action buttons bound', ['attack', 'defend', 'weapon', 'heal', 'bow', 'dodge', 'special'].every((key) => hud.el.buttons[key]));
 check('cooldown rings bound', ['attack', 'heal', 'bow'].every((key) => hud.el.cooldowns[key]));
 check('weapon strip lists the rack', Object.keys(hud.chips).length === WEAPONS.length, Object.keys(hud.chips).join(', '));
 
@@ -69,7 +69,7 @@ check('lives dim when spent', document.querySelectorAll('.life.is-active').lengt
 check('loot counters update', hud.el.coins.textContent === '42' && hud.el.gems.textContent === '3');
 check('weapon chip highlights', hud.chips.vel.classList.contains('is-on'));
 check('cooldown variable set', hud.el.cooldowns.bow.style.getPropertyValue('--cd') === '0.5');
-check('result screen reveals', hud.el.result.hidden === false && hud.el.resultTitle.textContent === 'You Win');
+check('result screen reveals', hud.el.result.hidden === false && hud.el.resultTitle.textContent === 'Level Clear!');
 check('floating text mounts', document.querySelectorAll('.floater').length === 1);
 
 console.log('\nControls');

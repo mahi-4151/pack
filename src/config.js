@@ -24,7 +24,10 @@ export const CAMERA = {
 
 export const COMBAT = {
   maxHp: 100,
-  lives: 3,
+  lives: 5,
+  dodge: { cooldown: 1.6, distance: 1.7, invulnerable: 0.55 },
+  special: { cooldown: 9, damage: 30, range: 3.2, charge: 3 }, // charge = hits needed to unlock
+  points: { hit: 25, crit: 60, parry: 40, dodge: 15, special: 120, kill: 1000, lifeBonus: 300, timeBonus: 500 },
   moveSpeed: 2.0,
   backSpeed: 1.5,
   blockReduction: 0.25, // damage multiplier while blocking

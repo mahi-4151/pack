@@ -320,6 +320,10 @@ const HERO = {
     hit: { file: 'character/hero/Injured Turn Right.fbx', inPlace: true },
     death: { file: 'character/hero/Two Handed Sword Death.fbx', inPlace: true },
     bow: { file: 'character/hero/Standing Draw Arrow.fbx', inPlace: true },
+    // Borrowed from the villain's great-sword pack (same Mixamo skeleton).
+    dodge: { file: 'character/villen/Great Sword Pack/great sword slide attack.fbx', inPlace: true },
+    special: { file: 'character/villen/Great Sword Pack/great sword jump attack.fbx', inPlace: true },
+    cast: { file: 'character/villen/Great Sword Pack/spell cast.fbx', inPlace: true },
   },
 };
 
@@ -340,6 +344,8 @@ const VILLAIN = {
     death: { file: 'character/villen/Great Sword Pack/two handed sword death.fbx', inPlace: true },
     cast: { file: 'character/villen/Great Sword Pack/great sword casting.fbx', inPlace: true },
     powerUp: { file: 'character/villen/Great Sword Pack/great sword power up.fbx', inPlace: true },
+    dodge: { file: 'character/villen/Great Sword Pack/great sword slide attack.fbx', inPlace: true },
+    special: { file: 'character/villen/Great Sword Pack/great sword jump attack.fbx', inPlace: true },
   },
 };
 

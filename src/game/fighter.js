@@ -358,7 +358,21 @@ export class Fighter {
   /* --------------------------------------------------------------- combat */
 
   get busy() {
-    return this.dead || this.state === 'attack' || this.state === 'hit' || this.state === 'cast';
+    return this.dead || this.state === 'attack' || this.state === 'hit' || this.state === 'cast' || this.state === 'dodge';
+  }
+
+  /** Evasive roll: plays the slide clip and glides the body along the floor. */
+  dodge({ distance = 1.6, direction = -1, invulnerable = 0.5, clampX } = {}) {
+    if (this.busy || this.blocking) return 0;
+    const clip = this.has('dodge') ? 'dodge' : 'walkBack';
+    const duration = this.oneShotClip(clip, { state: 'dodge', timeScale: 1.35 });
+    this.invulnerableUntil = performance.now() / 1000 + invulnerable;
+    this.slide = { from: this.x, to: clampX ? clampX(this.x + direction * this.facing * distance) : this.x + direction * this.facing * distance, t: 0, duration: duration * 0.7 };
+    return duration;
+  }
+
+  get invulnerable() {
+    return (this.invulnerableUntil ?? 0) > performance.now() / 1000;
   }
 
   after(seconds, fn) {
@@ -428,6 +442,8 @@ export class Fighter {
     this.moveInput = 0;
     this.timers.length = 0;
     this.oneShot = null;
+    this.slide = null;
+    this.invulnerableUntil = 0;
     this.root.position.set(this.startX, 0, 0);
     for (const { action } of this.clips.values()) action.stop();
     this.current = null;
@@ -524,6 +540,12 @@ export class Fighter {
   }
 
   update(dt) {
+    if (this.slide) {
+      this.slide.t += dt;
+      const k = Math.min(1, this.slide.t / this.slide.duration);
+      this.root.position.x = this.slide.from + (this.slide.to - this.slide.from) * (1 - Math.pow(1 - k, 3));
+      if (k >= 1) this.slide = null;
+    }
     for (let i = this.timers.length - 1; i >= 0; i--) {
       const timer = this.timers[i];
       timer.t -= dt;

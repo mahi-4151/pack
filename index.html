@@ -133,6 +133,26 @@
             </div>
             <div class="weapon-strip" data-weapon-strip aria-label="Equipped weapon"></div>
           </div>
+
+          <!-- Live, top-down view of the duel lane; never captures control input. -->
+          <section class="minimap" data-minimap aria-labelledby="minimap-title" aria-describedby="minimap-legend">
+            <h2 class="minimap__title" id="minimap-title">Madurai · Arena</h2>
+            <div class="minimap__field">
+              <svg class="minimap__terrain" viewBox="0 0 200 72" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <path d="M12 22V8h54l8 7h52l8-7h54v14M12 50v14h54l8-7h52l8 7h54V50" />
+                <path d="M36 8v10M164 8v10M36 54v10M164 54v10M94 8h12M100 4v8" />
+                <circle cx="100" cy="36" r="21" />
+              </svg>
+              <div class="minimap__lane">
+                <span class="minimap__dot minimap__dot--hero" data-minimap-player role="img" aria-label="Hero position">H</span>
+                <span class="minimap__dot minimap__dot--enemy" data-minimap-enemy role="img" aria-label="Enemy position">E</span>
+              </div>
+            </div>
+            <p class="minimap__legend" id="minimap-legend">
+              <span><i class="minimap__key minimap__key--hero" aria-hidden="true">H</i> Hero</span>
+              <span><i class="minimap__key minimap__key--enemy" aria-hidden="true">E</i> Enemy</span>
+            </p>
+          </section>
         </div>
       </div>
 

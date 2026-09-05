@@ -519,9 +519,11 @@ export class Game {
     this.effects.update(dt);
     this.arena.update(dt, elapsed);
 
-    // Keep the camera centred between the duellists for a subtle dolly.
+    // Track after movement in every state, including respawns and match resets.
     if (this.player && this.enemy) {
+      this.hud.setMinimap(this.player.x, this.enemy.x);
       this.arena.trackFighters(this.player.x, this.enemy.x, elapsed);
+      // Keep the camera centred between the duellists for a subtle dolly.
       const midpoint = (this.player.x + this.enemy.x) * 0.5;
       this.arena.cameraTarget.x += (midpoint * 0.55 - this.arena.cameraTarget.x) * Math.min(1, dt * 2.2);
     }

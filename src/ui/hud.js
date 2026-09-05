@@ -1,11 +1,11 @@
-import { COMBAT, WEAPONS } from '../config.js';
+import { ARENA, COMBAT, WEAPONS } from '../config.js';
 
 const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
 
 /**
  * Owns every pixel of the DOM overlay: health bars, lives, loot counters,
- * cooldown sweeps, floating combat text and the loading / start / result
+ * cooldown sweeps, the minimap, floating combat text and loading / start / result
  * screens. The 3D layer never touches the DOM directly.
  */
 export class Hud {
@@ -33,6 +33,9 @@ export class Hud {
       weaponLabel: $('[data-weapon-label]'),
       weaponStrip: $('[data-weapon-strip]'),
       enemyIndicator: $('[data-enemy-indicator]'),
+      minimap: $('[data-minimap]'),
+      minimapPlayer: $('[data-minimap-player]'),
+      minimapEnemy: $('[data-minimap-enemy]'),
       bars: {
         player: { fill: $('[data-hp-fill="player"]'), lag: $('[data-hp-lag="player"]'), text: $('[data-hp-text="player"]'), bar: $('.bar--player'), portrait: $('.portrait--player') },
         enemy: { fill: $('[data-hp-fill="enemy"]'), lag: $('[data-hp-lag="enemy"]'), text: $('[data-hp-text="enemy"]'), bar: $('.bar--enemy'), portrait: $('.portrait--enemy') },
@@ -44,6 +47,7 @@ export class Hud {
     this.#buildWeaponStrip();
     this.setHp('player', COMBAT.maxHp, COMBAT.maxHp);
     this.setHp('enemy', COMBAT.maxHp, COMBAT.maxHp);
+    this.setMinimap(ARENA.playerStart, ARENA.enemyStart);
   }
 
   #buildWeaponStrip() {
@@ -114,6 +118,20 @@ export class Hud {
   }
 
   /* ------------------------------------------------------------ in-battle */
+
+  /** Fighters move on one world-X lane; percentages keep the map resize-safe. */
+  setMinimap(playerX, enemyX) {
+    const { min, max } = ARENA.bounds;
+    const place = (marker, x, name) => {
+      const percent = Math.max(0, Math.min(100, (x - min) / (max - min) * 100));
+      marker.style.left = `${percent.toFixed(2)}%`;
+      // Expose positions without announcing every frame to screen readers.
+      const label = `${name}: ${Math.round(percent)}% across the arena`;
+      if (marker.getAttribute('aria-label') !== label) marker.setAttribute('aria-label', label);
+    };
+    place(this.el.minimapPlayer, playerX, 'Hero');
+    place(this.el.minimapEnemy, enemyX, 'Enemy');
+  }
 
   setHp(side, hp, maxHp) {
     const bar = this.el.bars[side];

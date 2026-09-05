@@ -24,7 +24,8 @@ globalThis.PointerEvent = dom.window.MouseEvent;
 
 const { Hud } = await import('../src/ui/hud.js');
 const { Controls } = await import('../src/ui/controls.js');
-const { WEAPONS } = await import('../src/config.js');
+const { ARENA, WEAPONS } = await import('../src/config.js');
+const { Game } = await import('../src/game/game.js');
 
 let failures = 0;
 const check = (label, condition, detail = '') => {
@@ -38,6 +39,7 @@ const missing = Object.entries(hud.el)
   .filter(([, value]) => value === null)
   .map(([key]) => key);
 check('every HUD node resolves', missing.length === 0, missing.join(', '));
+check('minimap stays hidden with the HUD before play', hud.el.hud.hidden && hud.el.minimap.closest('#hud') === hud.el.hud);
 check('all five action buttons bound', ['attack', 'defend', 'weapon', 'heal', 'bow'].every((key) => hud.el.buttons[key]));
 check('cooldown rings bound', ['attack', 'heal', 'bow'].every((key) => hud.el.cooldowns[key]));
 check('weapon strip lists the rack', Object.keys(hud.chips).length === WEAPONS.length, Object.keys(hud.chips).join(', '));
@@ -71,6 +73,76 @@ check('weapon chip highlights', hud.chips.vel.classList.contains('is-on'));
 check('cooldown variable set', hud.el.cooldowns.bow.style.getPropertyValue('--cd') === '0.5');
 check('result screen reveals', hud.el.result.hidden === false && hud.el.resultTitle.textContent === 'You Win');
 check('floating text mounts', document.querySelectorAll('.floater').length === 1);
+
+console.log('\nMinimap');
+const { min, max } = ARENA.bounds;
+const span = max - min;
+const percent = (marker) => parseFloat(marker.style.left);
+const near = (actual, expected) => Math.abs(actual - expected) < 0.01;
+const mapped = (x) => (x - min) / span * 100;
+const markersAt = (player, enemy) => near(percent(hud.el.minimapPlayer), player) && near(percent(hud.el.minimapEnemy), enemy);
+
+check('map is the final bottom HUD panel', hud.el.minimap.parentElement.classList.contains('hud__bottom') && hud.el.minimap.parentElement.lastElementChild === hud.el.minimap);
+check('markers start at both fighter spawns', markersAt(mapped(ARENA.playerStart), mapped(ARENA.enemyStart)));
+check('H / E distinguish fighters without relying on color', hud.el.minimapPlayer.textContent === 'H' && hud.el.minimapEnemy.textContent === 'E');
+check('map legend names both fighters', /Hero/.test(document.querySelector('#minimap-legend').textContent) && /Enemy/.test(document.querySelector('#minimap-legend').textContent));
+
+hud.setMinimap(min, max);
+check('arena edges map to opposite ends of the lane', markersAt(0, 100));
+hud.setMinimap(min + span / 4, min + span * 3 / 4);
+check('world positions scale linearly', markersAt(25, 75));
+check('accessible positions update without live announcements', hud.el.minimapPlayer.getAttribute('aria-label') === 'Hero: 25% across the arena' && hud.el.minimapEnemy.getAttribute('aria-label') === 'Enemy: 75% across the arena' && !hud.el.minimap.closest('[aria-live]'));
+hud.setMinimap(min + span / 2, min + span / 2);
+check('arena midpoint is centered for either fighter', markersAt(50, 50));
+hud.setMinimap(min - span, max + span);
+check('out-of-bounds positions clamp to the map', markersAt(0, 100));
+hud.setMinimap(max + span, min - span);
+check('both markers clamp at either edge', markersAt(100, 0));
+hud.setMinimap(min + span / 4, min + span * 3 / 4);
+hud.setMinimap(min + span / 2, min + span * 3 / 4);
+check('hero can move without moving the enemy marker', markersAt(50, 75));
+hud.setMinimap(min + span / 2, max);
+check('enemy can move without moving the hero marker', markersAt(50, 100));
+
+// Exercise the real movement + frame loop without constructing a WebGL renderer.
+const laneFighter = (x, facing) => ({
+  root: { position: { x } },
+  get x() { return this.root.position.x; },
+  facing,
+  moveInput: 1,
+  update() {},
+});
+let renderedMarkers;
+const game = Object.assign(Object.create(Game.prototype), {
+  running: true,
+  state: 'fighting',
+  clock: { getDelta: () => 0.05, elapsedTime: 1 },
+  hud,
+  player: laneFighter(ARENA.playerStart, 1),
+  enemy: laneFighter(ARENA.enemyStart, -1),
+  brain: { update() {} },
+  effects: { update() {} },
+  arena: { update() {}, trackFighters() {}, cameraTarget: { x: 0 } },
+  renderer: { render() { renderedMarkers = [percent(hud.el.minimapPlayer), percent(hud.el.minimapEnemy)]; } },
+  tickCooldowns() {},
+});
+hud.setMinimap(ARENA.playerStart, ARENA.enemyStart);
+game.frame();
+check('both fighters actually move in the test frame', game.player.x > ARENA.playerStart && game.enemy.x < ARENA.enemyStart);
+check('frame tracks both positions after movement, before rendering', near(renderedMarkers[0], mapped(game.player.x)) && near(renderedMarkers[1], mapped(game.enemy.x)));
+for (const state of ['ready', 'interlude', 'over']) {
+  game.state = state;
+  game.player.root.position.x = ARENA.playerStart;
+  game.enemy.root.position.x = ARENA.enemyStart;
+  hud.setMinimap(max, min); // Deliberately stale markers before a respawn / reset.
+  game.frame();
+  check(`map refreshes outside combat (${state})`, markersAt(mapped(ARENA.playerStart), mapped(ARENA.enemyStart)));
+}
+game.running = false;
+hud.setMinimap(min, max);
+game.frame();
+check('stopped frame loop leaves the map alone', markersAt(0, 100));
+hud.setMinimap(ARENA.playerStart, ARENA.enemyStart);
 
 console.log('\nControls');
 const seen = { move: [], action: [], hold: [] };
